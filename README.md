@@ -11,6 +11,6 @@ Advantages compared to the web interface :
 Remarks : 
 - Before starting, you need to create a python virtual environment according to requirements.txt using `pip install -r requirements.txt`
 - your OpenAI API KEY needs to be stored in a .env file in the same directory as the llmchat.py file
-- Please type "python llmchat.py" to start the program
+- Please type `python llmchat.py` to start the program
 - the subdirectory "chats" is available to store chats (but you may use another location)
 
