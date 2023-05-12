@@ -5,3 +5,4 @@ openai1.py
 token_count.py
 .env
 .venv
+.vscode
