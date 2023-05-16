@@ -1,7 +1,7 @@
 ####
 #### LLMCHAT.PY
 #### Written by Arnaud Stevins, 12 May 2023
-#### Applicable license : GPLv3
+#### Applicable license : GNU General Public License V3
 
 
 ####
@@ -111,12 +111,12 @@ reinitialize()
 import PySimpleGUI as psg
 import json
 
-psg.set_options(font=("Verdana", 14))
+psg.set_options(font=("Verdana", 12))
 psg.theme("LightGreen1")
 
 layout = [
     [psg.Text(text="Past Dialogue :")],
-    [psg.Multiline(autoscroll=True, size=(100, 40), key="#Dialogue#")],
+    [psg.Multiline(autoscroll=True, size=(100, 32), key="#Dialogue#")],
     [
         psg.Text(text="Temperature :"),
         psg.Slider(
@@ -141,7 +141,7 @@ layout = [
         )
     ],
     [psg.Text(text="Your input :")],
-    [psg.Multiline(size=(100, 10), key="#Input#")],
+    [psg.Multiline(size=(100, 8), key="#Input#")],
     [
         psg.Button("Check # tokens", key="-CheckToken-"),
         psg.Text(
@@ -160,7 +160,13 @@ layout = [
     ],
 ]
 
-window = psg.Window("Welcome to the OpenAI chatbot", layout, size=(700, 1200))
+window = psg.Window(
+    "Welcome to the OpenAI chatbot",
+    layout,
+    size=(700, 900),
+    resizable=True,
+    finalize=True,
+)
 
 while True:
     # event handler
@@ -197,10 +203,15 @@ while True:
                 save_as=False,
             )
             if loadfile != None:
-                f = open(loadfile, "r")
-                reinitialize()
-                context = json.load(f)
-                f.close()
+                try:
+                    with open(loadfile, "r") as f:
+                        reinitialize()
+                        context = json.load(f)
+                        f.close()
+                except OSError:
+                    tmp = psg.popup_error(
+                        "File not found. Please check path & filename"
+                    )
 
         case "-SaveSession-":
             savefile = psg.popup_get_file(
@@ -218,9 +229,12 @@ while True:
                 sort_keys=True,
                 separators=(",", ":"),
             )
-            with open(savefile, "w") as f:
-                f.write(json_str)
-                f.close()
+            try:
+                with open(savefile, "w") as f:
+                    f.write(json_str)
+                    f.close()
+            except OSError:
+                tmp = psg.popup_error("Cannot save file. Please check path & file")
 
         case "-Exit-" | psg.WIN_CLOSED:
             break
@@ -232,10 +246,10 @@ while True:
     price = ptok * price_prompt + ctok * price_completion
     totalprice = total_ptok * price_prompt + total_ctok * price_completion
     window["#TokensLastIteration#"].update(
-        f"Tokens last iteration : Prompt {ptok}T / Completion {ctok}T"
+        f"Tokens last iteration : Prompt {ptok}T / Completion {ctok}T => Estimated price {price*100} cents"
     )
     window["#TokensTotal#"].update(
-        f"Total tokens used : Prompt {total_ptok}T / Completion {total_ctok}T"
+        f"Total tokens used : Prompt {total_ptok}T / Completion {total_ctok}T => Estimated price {totalprice*100} cents"
     )
 
 

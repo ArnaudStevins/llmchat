@@ -10,7 +10,8 @@ Advantages compared to the web interface :
 
 Remarks : 
 - Before starting, you need to create a python virtual environment according to requirements.txt using `pip install -r requirements.txt`
-- your OpenAI API KEY needs to be stored in a .env file in the same directory as the llmchat.py file
+- your OpenAI API KEY needs to be stored in a .env file in the same directory as the llmchat.py file or a parent directory
 - Please type `python llmchat.py` to start the program
 - the subdirectory "chats" is available to store chats (but you may use another location)
+- the GUI provides an estimation of the fee to be paid to OpenAI. This is provided as-is without any guarantee of correctness, and additionally prices might change over time. The proper way to identify your charges is by consulting [this page](https://platform.openai.com/account/usage) 
 
