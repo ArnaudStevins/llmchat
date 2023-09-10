@@ -21,7 +21,7 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 ####
 
 
-def get_completion_from_messages(messages, model="gpt-3.5-turbo", temperature=0):
+def get_completion_from_messages(messages, model, temperature=0):
     response = openai.ChatCompletion.create(
         model=model,
         messages=messages,
@@ -37,7 +37,7 @@ def get_completion_from_messages(messages, model="gpt-3.5-turbo", temperature=0)
 import tiktoken
 
 
-def num_tokens_from_messages(messages, model="gpt-3.5-turbo"):
+def num_tokens_from_messages(messages, model):
     """Returns the number of tokens used by a list of messages."""
 
     try:
@@ -87,22 +87,24 @@ def format_dialogue(context):
 
 
 def reinitialize():
-    global temperature, model, ptok, total_ptok
+    global temperature, ptok, total_ptok
     global ctok, total_ctok, price_prompt, price_completion, context
     temperature = 0.0  # model temperature
-    model = "gpt-3.5-turbo"  # model definition
     ptok = 0  # number of prompt tokens last iteration
     total_ptok = 0  # total number of prompt tokens (all iterations)
     ctok = 0  # number of completion tokens last iteration
     total_ctok = 0  # total number of completion tokens (all iterations)
-    price_prompt = 0.002 / 1000.0  # in USD per prompt token
-    price_completion = 0.002 / 1000.0  # in USD per completion token
     context = []  # context stores all prompts and completions
     return
 
 
 reinitialize()
 
+### List models available
+
+listmodels = ["gpt-3.5-turbo", "gpt-4"]
+modelref = 0
+model = listmodels[modelref]
 
 ####
 #### Main Loop for PySimpleGUI
@@ -111,12 +113,17 @@ reinitialize()
 import PySimpleGUI as psg
 import json
 
-psg.set_options(font=("Verdana", 12))
+psg.set_options(font=("Verdana", 13))
 psg.theme("LightGreen1")
 
+
 layout = [
+    [
+        psg.Text(text=f"Current Model : {model}", key="#ModelName#"),
+        psg.Button("Change model", key="-ChangeModel-"),
+    ],
     [psg.Text(text="Past Dialogue :")],
-    [psg.Multiline(autoscroll=True, size=(100, 32), key="#Dialogue#")],
+    [psg.Multiline(autoscroll=True, disabled=True, size=(100, 32), key="#Dialogue#")],
     [
         psg.Text(text="Temperature :"),
         psg.Slider(
@@ -140,18 +147,22 @@ layout = [
             key="#TokensTotal#",
         )
     ],
+    # [psg.Text(text="System prompt :")],
+    # [psg.Multiline(size=(100, 8), key="#systemInput#")],
+    # [
+    #    psg.Button("Load system prompt", key="-LoadSystem-"),
+    #    psg.Button("Save system prompt", key="-SaveSystem-"),
+    #    psg.Button("Clear system prompt", key="-ClearSystem-"),
+    # ],
     [psg.Text(text="Your input :")],
     [psg.Multiline(size=(100, 8), key="#Input#")],
+    [psg.Button("Submit", key="-SubmitUser-")],
     [
         psg.Button("Check # tokens", key="-CheckToken-"),
         psg.Text(
             text="Past dialogue : 0T + this prompt 0T = 0T",
             key="#TokensEstimate#",
         ),
-    ],
-    [
-        psg.Button("Submit as User", key="-SubmitUser-"),
-        psg.Button("Submit as System", key="-SubmitSystem-"),
     ],
     [
         psg.Button("Load chat session", key="-LoadSession-"),
@@ -161,9 +172,9 @@ layout = [
 ]
 
 window = psg.Window(
-    "Welcome to the OpenAI chatbot",
+    "LLMchat",
     layout,
-    size=(700, 900),
+    size=(700, 950),
     resizable=True,
     finalize=True,
 )
@@ -180,12 +191,13 @@ while True:
             str = f"Last dialogue : {alltok}T + estimate this prompt {tok}T => total {alltok+tok}T"
             window["#TokensEstimate#"].update(str)
 
-        case "-SubmitUser-" | "-SubmitSystem-":
-            str = "user" if (event == "-SubmitUser-") else "system"
+        case "-SubmitUser-":
+            str = "user"
             context.append({"role": str, "content": values["#Input#"]})
             response, ptok, ctok = get_completion_from_messages(
                 context, model=model, temperature=temperature
             )
+            # print(model)
             context.append({"role": "assistant", "content": f"{response['content']}"})
             total_ptok += ptok
             total_ctok += ctok
@@ -193,6 +205,13 @@ while True:
 
         case "-Temperature-":
             temperature = values["-Temperature-"] / 100.0
+
+        case "-ChangeModel-":
+            modelref = (modelref + 1) % len(listmodels)
+            model = listmodels[modelref]
+            reinitialize()
+            window["#Input#"].update("")
+            window["#ModelName#"].update(f"Current Model : {model}")
 
         case "-LoadSession-":
             loadfile = psg.popup_get_file(
@@ -243,13 +262,11 @@ while True:
 
     # refresh all displays
     window["#Dialogue#"].update(format_dialogue(context))
-    price = ptok * price_prompt + ctok * price_completion
-    totalprice = total_ptok * price_prompt + total_ctok * price_completion
     window["#TokensLastIteration#"].update(
-        f"Tokens last iteration : Prompt {ptok}T / Completion {ctok}T => Estimated price {price*100} cents"
+        f"Tokens last iteration : Prompt {ptok}T / Completion {ctok}T"
     )
     window["#TokensTotal#"].update(
-        f"Total tokens used : Prompt {total_ptok}T / Completion {total_ctok}T => Estimated price {totalprice*100} cents"
+        f"Total tokens used : Prompt {total_ptok}T / Completion {total_ctok}T"
     )
 
 
