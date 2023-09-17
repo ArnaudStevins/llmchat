@@ -29,6 +29,7 @@ def get_completion_from_messages(messages, model, temperature=0):
     )
     return (
         response.choices[0].message,
+        response.choices[0].finish_reason,
         response.usage.prompt_tokens,
         response.usage.completion_tokens,
     )
@@ -102,9 +103,11 @@ reinitialize()
 
 ### List models available
 
-listmodels = ["gpt-3.5-turbo", "gpt-4"]
+listmodels = ["gpt-3.5-turbo", "gpt-3.5-turbo-16k", "gpt-4", "gpt-4-32k"]
+sizemodels = [4096, 16384, 8192, 32768]
 modelref = 0
 model = listmodels[modelref]
+modelsize = sizemodels[modelref]
 
 ####
 #### Main Loop for PySimpleGUI
@@ -119,8 +122,11 @@ psg.theme("LightGreen1")
 
 layout = [
     [
-        psg.Text(text=f"Current Model : {model}", key="#ModelName#"),
         psg.Button("Change model", key="-ChangeModel-"),
+        psg.Text(
+            text=f"Current Model : {model}, context size : {modelsize} Tokens",
+            key="#ModelName#",
+        ),
     ],
     [psg.Text(text="Past Dialogue :")],
     [psg.Multiline(autoscroll=True, disabled=True, size=(100, 32), key="#Dialogue#")],
@@ -156,7 +162,7 @@ layout = [
     # ],
     [psg.Text(text="Your input :")],
     [psg.Multiline(size=(100, 8), key="#Input#")],
-    [psg.Button("Submit", key="-SubmitUser-")],
+    [psg.Button("Submit", key="-Submit-"), psg.Button("Clear", key="-Clear-")],
     [
         psg.Button("Check # tokens", key="-CheckToken-"),
         psg.Text(
@@ -191,17 +197,27 @@ while True:
             str = f"Last dialogue : {alltok}T + estimate this prompt {tok}T => total {alltok+tok}T"
             window["#TokensEstimate#"].update(str)
 
-        case "-SubmitUser-":
+        case "-Submit-":
             str = "user"
             context.append({"role": str, "content": values["#Input#"]})
-            response, ptok, ctok = get_completion_from_messages(
+            response, finish_reason, ptok, ctok = get_completion_from_messages(
                 context, model=model, temperature=temperature
             )
-            # print(model)
-            context.append({"role": "assistant", "content": f"{response['content']}"})
-            total_ptok += ptok
-            total_ctok += ctok
-            window["#Input#"].update("")
+            # print(finish_reason)
+            if finish_reason == "stop":
+                context.append(
+                    {"role": "assistant", "content": f"{response['content']}"}
+                )
+                total_ptok += ptok
+                total_ctok += ctok
+                window["#Input#"].update("")
+            if finish_reason == "length":
+                psg.popup(
+                    "Attention - maximum number of tokens was reached, consider starting new dialogue"
+                )
+
+        case "-Clear-":
+            reinitialize()
 
         case "-Temperature-":
             temperature = values["-Temperature-"] / 100.0
@@ -209,9 +225,12 @@ while True:
         case "-ChangeModel-":
             modelref = (modelref + 1) % len(listmodels)
             model = listmodels[modelref]
+            modelsize = sizemodels[modelref]
             reinitialize()
             window["#Input#"].update("")
-            window["#ModelName#"].update(f"Current Model : {model}")
+            window["#ModelName#"].update(
+                f"Current Model : {model}, context size : {modelsize} Tokens"
+            )
 
         case "-LoadSession-":
             loadfile = psg.popup_get_file(
@@ -263,10 +282,10 @@ while True:
     # refresh all displays
     window["#Dialogue#"].update(format_dialogue(context))
     window["#TokensLastIteration#"].update(
-        f"Tokens last iteration : Prompt {ptok}T / Completion {ctok}T"
+        f"Tokens last iteration : Prompt {ptok}T + Completion {ctok}T = {ptok+ctok}T / {modelsize}T (maximum)"
     )
     window["#TokensTotal#"].update(
-        f"Total tokens used : Prompt {total_ptok}T / Completion {total_ctok}T"
+        f"Total tokens used : Prompt {total_ptok}T + Completion {total_ctok}T"
     )
 
 

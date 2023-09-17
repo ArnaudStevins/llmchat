@@ -3,6 +3,8 @@ langchain1.py
 dlai_2_chatbot.py
 openai1.py
 token_count.py
+.DS_Store
 .env
 .venv
 .vscode
+chats/*

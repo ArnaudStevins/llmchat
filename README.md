@@ -6,6 +6,7 @@ This program provides a window GUI chat interface to OpenAI ChatGPT.
 Advantages of this program compared to the OpenAI web interface :
 
 * The interface allows you to select between *ChatGPT3.5* and *ChatGPT4*, and use *ChatGPT4* even if you don't have the ChatGPT+ subscription (but you need to have an OpenAI API subscription);
+* The interface also allows you to select the extended context length interfaces (16k tokens for ChatGPT3.5 and 32k tokens for ChatGPT4); please note that these models are more costly to use;
 * You can estimate tokens to be sent (prompt) by clicking *check # Tokens*;
 * You can follow the token consumption of the previous iteration and the cumulative total (for fee estimation);
 * You can select the temperature f the model (the amount displayed is divided by 100, so 100 means Temperature=1);
@@ -27,7 +28,7 @@ Advantages of this program compared to the OpenAI web interface :
 
 Hereby a look at the Graphical User Interface on MacOS :
 
-![Llmchat window](llmchat.png)
+![Overview of Llmchat GUI window](llmchat-en.png)
 
 * At the top, you see the current model (by default : chatGPT-3.5). Pressing the button *Change Model* will let you toggle among the available OpenAI models;
 * The *Past dialogue* area shows you the dialog history, including your prompts and the model's answers. Your questions are referred to as "User" and the model's answers are referred to as "Assistant". Both are numbered chronologically;
