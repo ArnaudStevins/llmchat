@@ -55,7 +55,7 @@ def num_tokens_from_messages(messages, model):
 
     try:
         encoding = tiktoken.encoding_for_model(model)
-    except KeyError:
+    except ValueError:
         print("Warning: model not found. Using cl100k_base encoding.")
         encoding = tiktoken.get_encoding("cl100k_base")
 
@@ -100,7 +100,7 @@ def format_dialogue(context):
 
 
 def reinitialize():
-    global temperature, ptok, total_ptok, system_context
+    global temperature, ptok, total_ptok, sysprompt, defaultprompt
     global ctok, total_ctok, price_prompt, price_completion, context
     temperature = 0.0  # model temperature
     ptok = 0  # number of prompt tokens last iteration
@@ -108,21 +108,27 @@ def reinitialize():
     ctok = 0  # number of completion tokens last iteration
     total_ctok = 0  # total number of completion tokens (all iterations)
     context = []  # context stores all prompts and completions
+    sysprompt = {}
+    defaultprompt = "None"
 
     # load system context, if any
     try:
-        with open("system.txt", "r") as f:
-            sysprompt = f.read()
+        with open("system.json", "r") as f:
+            sysfile = json.load(f)
             f.close()
-            if sysprompt != "":
-                context.append({"role": "system", "content": sysprompt})
-                system_context = "Yes"
-            else:
-                system_context = "No"
+
+            for t in sysfile:
+                name, content, default = t["name"], t["content"], t["default"]
+                # print(name, "#", content, "#", default)
+                sysprompt[name] = content
+                if default == "True" and len(content) != 0:
+                    context.append({"role": "system", "content": content})
+                    defaultprompt = name
 
     except OSError:
-        system_context = "No"
+        pass
 
+    # print(list(sysprompt.keys()))
     return
 
 
@@ -164,7 +170,15 @@ layout = [
         psg.Text(text=f"Model size : {modelsize} T", key="#ModelSize#"),
         psg.Text(text=f"Model type : {modeltype}", key="#ModelType#"),
     ],
-    [psg.Text(text=f"System context loaded: {system_context}", key="#SystemContext#")],
+    [
+        psg.Text(text="Custom instruction :"),
+        psg.Combo(
+            list(sysprompt.keys()),
+            key="-CustomInstruction-",
+            default_value=defaultprompt,
+            enable_events=True,
+        ),
+    ],
     [psg.Text(text=f"Past dialogue :")],
     [psg.Multiline(autoscroll=True, disabled=True, size=(100, 32), key="#Dialogue#")],
     [
@@ -190,13 +204,6 @@ layout = [
             key="#TokensTotal#",
         )
     ],
-    # [psg.Text(text="System prompt :")],
-    # [psg.Multiline(size=(100, 8), key="#systemInput#")],
-    # [
-    #    psg.Button("Load system prompt", key="-LoadSystem-"),
-    #    psg.Button("Save system prompt", key="-SaveSystem-"),
-    #    psg.Button("Clear system prompt", key="-ClearSystem-"),
-    # ],
     [psg.Text(text="Your input :")],
     [psg.Multiline(size=(100, 8), key="#Input#")],
     [psg.Button("Submit", key="-Submit-"), psg.Button("Clear", key="-Clear-")],
@@ -236,6 +243,8 @@ while True:
 
         case "-Submit-":
             context.append({"role": "user", "content": values["#Input#"]})
+            window["#Dialogue#"].update(format_dialogue(context))
+            window.refresh()
             if modeltype == "chat":
                 response, finish_reason, ptok, ctok = get_chat_completion_from_messages(
                     context, model=model, temperature=temperature
@@ -333,6 +342,18 @@ while True:
             except OSError:
                 tmp = psg.popup_error("Cannot save file. Please check path & file")
 
+        case "-CustomInstruction-":
+            ref = values["-CustomInstruction-"]
+            content = sysprompt[ref]
+            # Remove old system prompt if it exists
+            if context != []:
+                if context[0]["role"] == "system":
+                    del context[0]
+            # insert new context
+            if len(content) != 0:
+                context.insert(0, {"role": "system", "content": content})
+            # print(content)
+
         case "-Exit-" | psg.WIN_CLOSED:
             break
         case _:
@@ -340,7 +361,7 @@ while True:
 
     # refresh all displays
     window["#Dialogue#"].update(format_dialogue(context))
-    window["#SystemContext#"].update(f"System context loaded: {system_context}")
+
     window["#TokensLastIteration#"].update(
         f"Tokens last iteration : Prompt {ptok}T + Completion {ctok}T = {ptok+ctok}T / {modelsize}T (maximum)"
     )
