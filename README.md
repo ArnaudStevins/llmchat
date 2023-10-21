@@ -31,6 +31,9 @@ Hereby a look at the Graphical User Interface on MacOS :
 ![Overview of Llmchat GUI window](llmchat-en.png)
 
 * At the top, you see the current model (by default : chatGPT-3.5). Pressing the button *Change Model* will let you toggle among the available OpenAI models;
+
+* The *Custom instructions* dropdown lets you select the model personality. You can adapt the personality of the model by modifying the *system.json* file.
+
 * The *Past dialogue* area shows you the dialog history, including your prompts and the model's answers. Your questions are referred to as "User" and the model's answers are referred to as "Assistant". Both are numbered chronologically;
 * The *Temperature* slider allows you to adapt the model temperature. The higher the temperature, the more creative (read : random) the model's answer. For programming code, you probably want to set the temperature to a low setting. For fiction writing, you might want to set it high.
 * Now follows two indications of the number of tokens already consumed by the past dialogue (so not including the current prompt):
